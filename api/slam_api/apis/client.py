@@ -21,28 +21,28 @@ class ClientPutSchema(Schema.from_dict(ClientDBSchema().fields)):  # type: ignor
 
 @client_app.route("/")
 class ClientsCollectionView(MethodView):
-    @role_access_control(
-        roles={
-            USER_ROLE.TEAMMEMBER,
-            USER_ROLE.TEAMLEADER,
-            USER_ROLE.ARCHILYSE_ONE_ADMIN,
-        }
-    )
+    # @role_access_control(
+    #     roles={
+    #         USER_ROLE.TEAMMEMBER,
+    #         USER_ROLE.TEAMLEADER,
+    #         USER_ROLE.ARCHILYSE_ONE_ADMIN,
+    #     }
+    # )
     @client_app.response(schema=ClientDBSchema(many=True), status_code=HTTPStatus.OK)
     def get(self):
-        user = get_user_authorized()
-        if client_id := user["client_id"]:
-            return jsonify([ClientDBHandler.get_by(id=client_id)]), HTTPStatus.OK
+        # user = get_user_authorized()
+        # if client_id := user["client_id"]:
+        #     return jsonify([ClientDBHandler.get_by(id=client_id)]), HTTPStatus.OK
         return jsonify(ClientDBHandler.find()), HTTPStatus.OK
 
-    @role_access_control(roles={USER_ROLE.ADMIN, USER_ROLE.TEAMLEADER})
+    # @role_access_control(roles={USER_ROLE.ADMIN, USER_ROLE.TEAMLEADER})
     @client_app.response(schema=ClientDBSchema, status_code=HTTPStatus.OK)
     def post(self):
         from handlers import ClientHandler
 
         values = request.get_json(force=True)
         new_client = ClientDBHandler.add(**values)
-        ClientHandler().create_bucket_if_not_exists(client_id=new_client["id"])
+        # ClientHandler().create_bucket_if_not_exists(client_id=new_client["id"])
         return jsonify(new_client), HTTPStatus.CREATED
 
 

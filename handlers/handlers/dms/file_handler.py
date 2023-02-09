@@ -1,4 +1,5 @@
 import contextlib
+import os
 import mimetypes
 import urllib
 from pathlib import Path
@@ -50,14 +51,7 @@ class FileHandler(DocumentHandler):
 
     @classmethod
     def get_media_link(cls, bucket: str, file_checksum: str) -> str:
-        return (
-            GCloudStorageHandler()
-            .get_blob_check_exists(
-                bucket_name=bucket,
-                file_path=cls.dms_file_path(file_checksum=file_checksum),
-            )
-            .media_link
-        )
+        return cls.dms_file_path(file_checksum=file_checksum)
 
     @classmethod
     def create(
@@ -79,18 +73,22 @@ class FileHandler(DocumentHandler):
         )
 
         encoded_checksum = cls._url_encoded_checksum(checksum=checksum)
-        # 1st create the file on gcs
-        GCloudStorageHandler().upload_bytes_to_bucket(
-            bucket_name=get_client_bucket_name(client_id=client_id),
-            destination_folder=cls.dms_path(),
-            #
-            # NOTE: Using file checksum will allow us to not duplicate files on
-            #       duplicated uploads
-            #
-            destination_file_name=encoded_checksum,
-            contents=file_obj.read(),
-            content_type=file_obj.content_type,  # type: ignore
-        )
+
+        if not os.path.exists(cls.dms_path()):
+            os.makedirs(cls.dms_path())
+        with open(cls.dms_file_path(encoded_checksum), 'wb') as f:
+            f.write(file_obj.read())
+        # GCloudStorageHandler().upload_bytes_to_bucket(
+        #     bucket_name=get_client_bucket_name(client_id=client_id),
+        #     destination_folder=cls.dms_path(),
+        #     #
+        #     # NOTE: Using file checksum will allow us to not duplicate files on
+        #     #       duplicated uploads
+        #     #
+        #     destination_file_name=encoded_checksum,
+        #     contents=file_obj.read(),
+        #     content_type=file_obj.content_type,  # type: ignore
+        # )
         # 2nd create the file entity
         return FileDBHandler.add(
             creator_id=user_id,
@@ -135,7 +133,7 @@ class FileHandler(DocumentHandler):
         # NOTE we want to avoid a situation in which
         # the file is deleted on gcs but not on the database.
         file = FileDBHandler.delete(item_pk={"id": file_id})
-        cls.delete_file_from_gcs(client_id=file["client_id"], checksum=file["checksum"])
+        # cls.delete_file_from_gcs(client_id=file["client_id"], checksum=file["checksum"])
 
     @classmethod
     def delete_file_from_gcs(cls, client_id: int, checksum: str):
@@ -150,10 +148,13 @@ class FileHandler(DocumentHandler):
 
     @classmethod
     def download(cls, client_id: int, checksum: str) -> bytes:
-        return GCloudStorageHandler().download_file_as_bytes(
-            bucket_name=get_client_bucket_name(client_id=client_id),
-            source_file_name=cls.dms_file_path(file_checksum=checksum),
-        )
+        with open(cls.dms_file_path(checksum), 'rb') as f:
+            b = f.read()
+        return b
+        # return GCloudStorageHandler().download_file_as_bytes(
+        #     bucket_name=get_client_bucket_name(client_id=client_id),
+        #     source_file_name=cls.dms_file_path(file_checksum=checksum),
+        # )
 
     @staticmethod
     def calculate_checksum_and_size(file_obj: FileStorage) -> Tuple[str, int]:
@@ -169,4 +170,4 @@ class FileHandler(DocumentHandler):
     def cleanup_trash(cls):
         deleted_files = FileDBHandler.remove_deleted_files()
         for checksum, client_id in deleted_files:
-            cls.delete_file_from_gcs(client_id=client_id, checksum=checksum)
+            os.remove(cls.dms_file_path(checksum))

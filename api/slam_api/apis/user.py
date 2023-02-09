@@ -82,25 +82,25 @@ class UserViewCollection(MethodView):
         as_kwargs=True,
     )
     @user_app.response(schema=UserDBSchema(many=True), status_code=HTTPStatus.OK)
-    @role_access_control(roles={USER_ROLE.ADMIN, USER_ROLE.ARCHILYSE_ONE_ADMIN})
-    @validate_entity_ownership(
-        ClientDBModel,
-        lambda kwargs: {"id": kwargs["client_id"]} if "client_id" in kwargs else {},
-    )
+    # @role_access_control(roles={USER_ROLE.ADMIN, USER_ROLE.ARCHILYSE_ONE_ADMIN})
+    # @validate_entity_ownership(
+    #     ClientDBModel,
+    #     lambda kwargs: {"id": kwargs["client_id"]} if "client_id" in kwargs else {},
+    # )
     def get(self, **kwargs):
-        kwargs = fallback_client_id_requesting_user(
-            requesting_user=get_user_authorized(), **kwargs
-        )
+        # kwargs = fallback_client_id_requesting_user(
+        #     **kwargs
+        # )
         users = UserDBHandler.find(**kwargs)
         return jsonify(users)
 
     @user_app.arguments(UserSchema, location="json", as_kwargs=True)
     @user_app.response(schema=UserDBSchema, status_code=HTTPStatus.CREATED)
-    @role_access_control(roles={USER_ROLE.ADMIN, USER_ROLE.ARCHILYSE_ONE_ADMIN})
+    # @role_access_control(roles={USER_ROLE.ADMIN, USER_ROLE.ARCHILYSE_ONE_ADMIN})
     def post(self, **kwargs):
-        ensure_allowed_to_create_update_user(
-            request_user=get_user_authorized(), new_data=kwargs
-        )
+        # ensure_allowed_to_create_update_user(
+        #     request_user=get_user_authorized(), new_data=kwargs
+        # )
         new_user = UserDBHandler.add(**kwargs)
         if any(
             role in (USER_ROLE.ARCHILYSE_ONE_ADMIN.name, USER_ROLE.DMS_LIMITED.name)

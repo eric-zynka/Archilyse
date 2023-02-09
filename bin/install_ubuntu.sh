@@ -10,6 +10,7 @@ docker_short_version='20.10.11'
 docker_version='5:20.10.17~3-0~ubuntu-focal'
 ifcopenshell_version=python-31-v0.7.0-1b1fd1e
 ifcopenshell_target_dir="$(pwd -P)/ifc_reader"
+imagemagick_version=7
 cmake_version='3.16.8'
 vtk_version_major='9.2'
 vtk_version='9.2.0.rc2'
@@ -186,7 +187,7 @@ python() {
   ## Create Log folder
   sudo mkdir -p /var/log/slam && sudo chown -R $USER:$USER /var/log/slam
   # Python wand library -> ImageMagick config
-  sudo cp docker/configs/image-magick-policy.xml /etc/ImageMagick-6/policy.xml
+  sudo cp docker/configs/image-magick-policy.xml /etc/ImageMagick-${imagemagick_version}/policy.xml
 }
 
 docker () {
@@ -272,5 +273,4 @@ case "$1" in
     ;;
   --docker)
     docker
-    ;;
 esac

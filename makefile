@@ -9,11 +9,11 @@ ifeq ($(unameOut), Darwin)
 	SHELL := $(shell echo ${SHELL})
 	COMPOSE_DOCKER_CLI_BUILD=0
 	DOCKER_BUILDKIT=0
-	GCLOUD_INC_FILE=~/google-cloud-sdk/path.zsh.inc
+	GCLOUD_INC_FILE=/opt/google-cloud-sdk/path.bash.inc
 else
 	COMPOSE_DOCKER_CLI_BUILD=1
 	DOCKER_BUILDKIT=1
-	GCLOUD_INC_FILE=~/google-cloud-sdk/path.bash.inc
+	GCLOUD_INC_FILE=/opt/google-cloud-sdk/path.bash.inc
 endif
 
 python_executable := python3.10
@@ -69,8 +69,8 @@ DOCKER_ENV_ARGS := $(shell < docker/.env xargs) $(shell < docker/.env.local xarg
 GCP_REGISTRY_PROJECT := $(shell < docker/.env.local grep GCP_REGISTRY_PROJECT | cut -d "=" -f 2)
 BASE_FE_VERSION := $(shell < docker/.env grep BASE_FE_IMAGE_VERSION | cut -d "=" -f 2)
 BASE_BE_VERSION := $(shell < docker/.env grep BASE_IMAGE_VERSION | cut -d "=" -f 2)
-BASE_FE_IMAGE := ${GCP_REGISTRY_PROJECT}/slam_base_fe:${BASE_FE_VERSION}
-BASE_PYTHON_IMAGE := ${GCP_REGISTRY_PROJECT}/slam_base:${BASE_BE_VERSION}
+BASE_FE_IMAGE := ${GCP_REGISTRY_PROJECT}slam_base_fe:${BASE_FE_VERSION}
+BASE_PYTHON_IMAGE := ${GCP_REGISTRY_PROJECT}slam_base:${BASE_BE_VERSION}
 NODE_VERSION := 14.20.0
 PYTHON_VERSION := 3.10.5
 
@@ -111,10 +111,10 @@ docker_restart_router: ## Docker compose build with CI settings
 up: docker_build docker_up  ## Docker-compose up alias
 
 docker_up:  ## Docker compose up all services with CI settings
-	$(DOCKER_DEV) up --remove-orphans router api worker
+	$(DOCKER_DEV) up --remove-orphans router api worker db_migrations
 
 docker_up_daemonize:  ## Docker compose up all services with CI settings
-	$(DOCKER_DEV) up -d --remove-orphans router api worker
+	$(DOCKER_DEV) up -d --remove-orphans router api worker db_migrations
 
 docker_down:
 	$(DOCKER_DEV) down -v --remove-orphans
@@ -130,6 +130,9 @@ docker_nginx_logs:
 
 docker_api_bash: ## Run and execute into the API container
 	$(DOCKER_DEV) run --rm --service-ports --entrypoint bash api
+
+docker_api_exec_bash: ## Run and execute into the API container
+	$(DOCKER_DEV) exec -it api /bin/bash
 
 docker_api_stag_bash: db_stag_proxy_up ## Run and execute into the SLAM with stag DB settings
 	$(DOCKER_DEV) run --rm \
@@ -568,8 +571,8 @@ db_download_site_info:  ## Download SITE info and apply to local env
     -e GCLOUD_BUCKET="test_$(USER)" \
     -e GCLOUD_CLIENT_BUCKET_PREFIX="test_client_$(USER)" \
     --entrypoint python api bin/dev_helpers/download_site_info.py || (printf \
-    	"$(CCYELLOW)Have you run make $(CCYELLOW)db_clean $(CCYELLOW)first? $(CCEND)"\
-		; exit 1)
+	"$(CCYELLOW)Have you run make $(CCYELLOW)db_clean $(CCYELLOW)first? $(CCEND)"\
+	; exit 1)
 
 db_up:  ## Start up Postgres and PGBouncer
 	$(DOCKER_DEV) up --remove-orphans -d pgbouncer

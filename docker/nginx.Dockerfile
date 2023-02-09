@@ -2,13 +2,13 @@ ARG GCP_REGISTRY_PROJECT
 ARG BASE_FE_IMAGE_VERSION
 
 # Compiles pipeline code
-FROM $GCP_REGISTRY_PROJECT/slam_base_fe:$BASE_FE_IMAGE_VERSION as pipeline
+FROM slam_base_fe:$BASE_FE_IMAGE_VERSION as pipeline
 WORKDIR /dep/pipeline/
 COPY ui/pipeline /dep/pipeline
 RUN ng build --prod --deployUrl=ui-assets/ --sourceMap=false --buildOptimizer=true
 
 # Compiles admin code
-FROM $GCP_REGISTRY_PROJECT/slam_base_fe:$BASE_FE_IMAGE_VERSION as admin
+FROM slam_base_fe:$BASE_FE_IMAGE_VERSION as admin
 WORKDIR /dep/admin/
 COPY /docker/.env /dep/admin/.env
 COPY /docker/.env.local /dep/admin/.env.local
@@ -16,7 +16,7 @@ COPY /ui/admin/ /dep/admin/
 RUN npm run build
 
 # Compiles dms code
-FROM $GCP_REGISTRY_PROJECT/slam_base_fe:$BASE_FE_IMAGE_VERSION as dms
+FROM slam_base_fe:$BASE_FE_IMAGE_VERSION as dms
 WORKDIR /dep/dms/
 COPY /docker/.env /dep/dms/.env
 COPY /docker/.env.local /dep/dms/.env.local
@@ -24,7 +24,7 @@ COPY /ui/dms/ /dep/dms/
 RUN npm run build
 
 # Compiles dashboard code
-FROM $GCP_REGISTRY_PROJECT/slam_base_fe:$BASE_FE_IMAGE_VERSION as dashboard
+FROM slam_base_fe:$BASE_FE_IMAGE_VERSION as dashboard
 WORKDIR /dep/dashboard
 COPY /docker/.env /dep/dashboard/.env
 COPY /docker/.env.local /dep/dashboard/.env.local
@@ -32,7 +32,7 @@ COPY /ui/dashboard /dep/dashboard
 RUN npm run build
 
 # Compiles Editor V2 code
-FROM $GCP_REGISTRY_PROJECT/slam_base_fe:$BASE_FE_IMAGE_VERSION as editorV2
+FROM slam_base_fe:$BASE_FE_IMAGE_VERSION as editorV2
 WORKDIR /dep/react-planner
 COPY /docker/.env /dep/react-planner/.env
 COPY /docker/.env.local /dep/react-planner/.env.local
@@ -40,7 +40,7 @@ COPY /ui/react-planner /dep/react-planner
 RUN npm run build
 
 # Compiles Potential View V2 code
-FROM $GCP_REGISTRY_PROJECT/slam_base_fe:$BASE_FE_IMAGE_VERSION as potential_view_v2
+FROM slam_base_fe:$BASE_FE_IMAGE_VERSION as potential_view_v2
 WORKDIR /dep/potential-view
 COPY /docker/.env /dep/potential-view/.env
 COPY /docker/.env.local /dep/potential-view/.env.local

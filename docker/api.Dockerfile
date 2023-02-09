@@ -1,6 +1,6 @@
 ARG BASE_IMAGE_VERSION
 ARG GCP_REGISTRY_PROJECT
-FROM $GCP_REGISTRY_PROJECT/slam_base:$BASE_IMAGE_VERSION as base
+FROM slam_base:$BASE_IMAGE_VERSION as base
 
 COPY api /src/api
 COPY brooks /src/brooks
