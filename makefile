@@ -9,11 +9,9 @@ ifeq ($(unameOut), Darwin)
 	SHELL := $(shell echo ${SHELL})
 	COMPOSE_DOCKER_CLI_BUILD=0
 	DOCKER_BUILDKIT=0
-	GCLOUD_INC_FILE=/opt/google-cloud-sdk/path.bash.inc
 else
 	COMPOSE_DOCKER_CLI_BUILD=1
 	DOCKER_BUILDKIT=1
-	GCLOUD_INC_FILE=/opt/google-cloud-sdk/path.bash.inc
 endif
 
 python_executable := python3.10
@@ -57,7 +55,6 @@ DOCKER_DEV := COMPOSE_DOCKER_CLI_BUILD=$(COMPOSE_DOCKER_CLI_BUILD) DOCKER_BUILDK
 USER_ID := "$(shell id -u):$(shell id -g)"
 
 build: docker_build ## Docker-compose build alias
-GCLOUD_AUTH := source $(shell echo ${GCLOUD_INC_FILE}) && CLOUDSDK_CORE_DISABLE_PROMPTS=1 gcloud auth configure-docker
 DOCKER_DEV_BUILD_PARALLEL := $(DOCKER_DEV) build --parallel \
 		--build-arg $(shell < docker/.env grep BASE_IMAGE_VERSION | xargs) \
 		--build-arg $(shell < docker/.env grep BASE_FE_IMAGE_VERSION | xargs) \
@@ -96,12 +93,10 @@ build_base_fe_image:  ## Build the base image for FE dependencies
 	${BASE_FE_IMAGE} .
 
 docker_build: ## Docker compose build with CI settings
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_DEV_BUILD_PARALLEL) fe_unittest worker api tests router
 	$(DOCKER_TAGS)
 
 docker_build_no_cache: ## Docker compose build with CI settings
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_DEV_BUILD_PARALLEL) --no-cache fe_unittest worker api tests router && \
 	$(DOCKER_TAGS)
 
@@ -244,7 +239,6 @@ fe_coverage_locally: test_common_ui test_admin_ui test_dms_ui test_dashboard_ui 
 # CI test targets
 ########################################################################################
 build_fe_unittests:
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_DEV_BUILD_PARALLEL) fe_unittest
 
 ci_fe_all_unittests: build_fe_unittests
@@ -256,27 +250,21 @@ ci_fe_all_unittests: build_fe_unittests
 	$(MAKE) ci_fe_common_unittests
 
 ci_fe_dms_unittests:
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_CI) run --no-deps --rm fe_unittest --dms_tests
 
 ci_fe_admin_unittests:
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_CI) run --no-deps --rm fe_unittest --admin_tests
 
 ci_fe_dashboard_unittests:
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_CI) run --no-deps --rm fe_unittest --dashboard_tests
 
 ci_fe_pipeline_unittests:
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_CI) run --no-deps --rm fe_unittest --pipeline_tests
 
 ci_fe_editor_unittests:
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_CI) run --no-deps --rm fe_unittest --editor_tests
 
 ci_fe_common_unittests:
-	$(GCLOUD_AUTH) && \
 	$(DOCKER_CI) run --no-deps --rm fe_unittest --common_tests
 
 ci_unittests: ## Run CI Python unit tests
@@ -568,8 +556,6 @@ ipython_stag_local: db_stag_proxy_up
 db_download_site_info:  ## Download SITE info and apply to local env
 	$(DOCKER_DEV) run --rm \
     $(DOCKER_STAG_ARGS) \
-    -e GCLOUD_BUCKET="test_$(USER)" \
-    -e GCLOUD_CLIENT_BUCKET_PREFIX="test_client_$(USER)" \
     --entrypoint python api bin/dev_helpers/download_site_info.py || (printf \
 	"$(CCYELLOW)Have you run make $(CCYELLOW)db_clean $(CCYELLOW)first? $(CCEND)"\
 	; exit 1)
