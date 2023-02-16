@@ -74,21 +74,17 @@ class FileHandler(DocumentHandler):
 
         encoded_checksum = cls._url_encoded_checksum(checksum=checksum)
 
-        if not os.path.exists(cls.dms_path()):
-            os.makedirs(cls.dms_path())
-        with open(cls.dms_file_path(encoded_checksum), 'wb') as f:
-            f.write(file_obj.read())
-        # GCloudStorageHandler().upload_bytes_to_bucket(
-        #     bucket_name=get_client_bucket_name(client_id=client_id),
-        #     destination_folder=cls.dms_path(),
-        #     #
-        #     # NOTE: Using file checksum will allow us to not duplicate files on
-        #     #       duplicated uploads
-        #     #
-        #     destination_file_name=encoded_checksum,
-        #     contents=file_obj.read(),
-        #     content_type=file_obj.content_type,  # type: ignore
-        # )
+        GCloudStorageHandler().upload_bytes_to_bucket(
+            bucket_name=get_client_bucket_name(client_id=client_id),
+            destination_folder=cls.dms_path(),
+            #
+            # NOTE: Using file checksum will allow us to not duplicate files on
+            #       duplicated uploads
+            #
+            destination_file_name=encoded_checksum,
+            contents=file_obj.read(),
+            content_type=file_obj.content_type,  # type: ignore
+        )
         # 2nd create the file entity
         return FileDBHandler.add(
             creator_id=user_id,

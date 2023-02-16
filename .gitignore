@@ -1,6 +1,9 @@
 .env.local
 .stag_args
 
+# Local blob storage
+docker/blobs
+
 .idea/
 .__pycache__/
 # Byte-compiled / optimized / DLL files

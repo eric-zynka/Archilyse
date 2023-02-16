@@ -1,4 +1,5 @@
 import base64
+import uuid
 import contextlib
 import hashlib
 import mimetypes
@@ -10,13 +11,13 @@ from urllib.parse import unquote, urlparse
 
 import requests
 from filelock import FileLock, Timeout
-from google.api_core.exceptions import NotFound, ServerError, ServiceUnavailable
-from google.auth.exceptions import RefreshError, TransportError
-from google.cloud import storage
-from google.cloud.storage import Blob
-from google.cloud.storage.bucket import Bucket
-from google.cloud.storage.constants import STANDARD_STORAGE_CLASS
-from google.oauth2.credentials import Credentials
+# from google.api_core.exceptions import NotFound, ServerError, ServiceUnavailable
+# from google.auth.exceptions import RefreshError, TransportError
+# from google.cloud import storage
+# from google.cloud.storage import Blob
+# from google.cloud.storage.bucket import Bucket
+# from google.cloud.storage.constants import STANDARD_STORAGE_CLASS
+# from google.oauth2.credentials import Credentials
 from requests.exceptions import ChunkedEncodingError, ReadTimeout
 from tenacity import (
     retry,
@@ -72,12 +73,8 @@ def retry_on_gcloud_common_errors(func):
     return retry(
         retry=retry_if_exception_type(
             exception_types=(
-                TransportError,
                 requests.exceptions.ConnectionError,
-                ServiceUnavailable,
-                RefreshError,
                 ChunkedEncodingError,
-                ServerError,
                 HTTPSConnectionPool,
                 JSONDecodeError,
                 ReadTimeout,
@@ -88,6 +85,92 @@ def retry_on_gcloud_common_errors(func):
         reraise=True,
     )(func)
 
+class Bucket:
+    def __init__(self, name):
+        self._name = name
+        self._id = str(uuid.uuid4())
+        self._blobs = {}
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def id(self):
+        return self._id
+
+    def create(self):
+        if not os.path.exists(self._name):
+            os.makedirs(self._name)
+
+    def delete(self, force=False):
+        os.removedirs(self._name)
+
+    def blob(self, filepath: Path):
+        blob = Blob(filepath)
+        self._blobs[filepath] = blob
+        return blob
+
+    def get_blob(self, file_path: Path):
+        if file_path in self._blobs:
+            return self._blobs[file_path]
+        if Path(file_path).exists():
+            return self.blob(file_path)
+        return None
+
+class Blob:
+    def __init__(self, blob_path: Path):
+        self._id = str(uuid.uuid4())
+        self._root_path = Path("blobs")
+        blob_path = Path(blob_path)
+        if blob_path.parents[-2] != self._root_path:
+            self._blob_path = self._root_path.joinpath(blob_path)
+        else:
+            self._blob_path = blob_path
+        self._blob_path.parent.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def media_link(self):
+        return self._blob_path
+
+    def upload_from_filename(self, local_file_path: Path):
+        pass
+        # self._media_link = self._bucket_path.joinpath(local_file_path)
+
+    def upload_from_string(self,
+                           contents: Union[bytes, str],
+                           content_type: str = mimetypes.types_map[".txt"]):
+        # self._media_link = self._bucket_path
+        if type(contents) == str:
+            with open(self.media_link, 'w') as f:
+                f.write(contents)
+        else:
+            with open(self.media_link, 'wb') as f:
+                f.write(contents)
+
+    def download_to_filename(self, local_file_name):
+        pass
+
+    def download_as_bytes(self):
+        with open(self.media_link, 'rb') as f:
+            b = f.read()
+        return b
+
+
+class Client:
+    def __init__(self,
+                 project=None,
+                 credentials=None):
+        pass
+
+class Credentials:
+    def __init__(self,
+                 token=None,
+                 client_id=None,
+                 client_secret=None,
+                 refresh_token=None,
+                 token_uri=None):
+        pass
 
 @decorate_all_public_methods(retry_on_gcloud_common_errors)
 class GCloudStorageHandler:
@@ -104,11 +187,12 @@ class GCloudStorageHandler:
         self.client_id = client_id or self.client_id
         self.client_secret = client_secret or self.client_secret
         self.refresh_token = refresh_token or self.refresh_token
+        self._buckets = {}
 
     @property
     def client(self):
         if not self._client:
-            self._client = storage.Client(
+            self._client = Client(
                 project=self.project_id,
                 credentials=Credentials(
                     token=None,
@@ -121,12 +205,14 @@ class GCloudStorageHandler:
         return self._client
 
     def _lookup_bucket(self, bucket_name: str) -> Bucket:
-        return self.client.lookup_bucket(bucket_name)
+        if bucket_name in self._buckets:
+            return self._buckets[bucket_name]
+        return None
 
     def _get_and_check_bucket_exists(self, bucket_name: str):
         bucket = self._lookup_bucket(bucket_name=bucket_name)
         if bucket is None:
-            raise GCloudMissingBucketException(f"Bucket {bucket_name} does not exist.")
+            return self.create_bucket_if_not_exists(bucket_name, "")
         return bucket
 
     def delete_bucket_if_exists(self, bucket_name: str):
@@ -159,24 +245,9 @@ class GCloudStorageHandler:
         predefined_default_object_acl: str = "private",
         versioning_enabled=False,
     ) -> Bucket:
-        if exising_bucket := self._lookup_bucket(bucket_name=bucket_name):
-            return exising_bucket
-        bucket = Bucket(
-            client=self.client, name=bucket_name, user_project=self.project_id
-        )
-        bucket.storage_class = STANDARD_STORAGE_CLASS
-        if versioning_enabled:
-            # Default config to keep 2 versions (live and previous) and delete after 14 days
-            bucket.versioning_enabled = True
-            bucket.add_lifecycle_delete_rule(number_of_newer_versions=2, is_live=False)
-            bucket.add_lifecycle_delete_rule(days_since_noncurrent_time=14)
-
-        return self.client.create_bucket(
-            bucket,
-            location=location,
-            predefined_acl=predefined_acl,
-            predefined_default_object_acl=predefined_default_object_acl,
-        )
+        bucket = Bucket(bucket_name)
+        bucket.create()
+        return bucket
 
     def upload_file_to_bucket(
         self,
@@ -204,7 +275,7 @@ class GCloudStorageHandler:
 
         if delete_local_after_upload:
             logger.debug(f"Deleting local file {local_file_path}")
-            local_file_path.unlink()
+            # local_file_path.unlink()
         else:
             # Save checksum file
             checksum_path = self._checksum_path(local_file_path)
@@ -232,18 +303,14 @@ class GCloudStorageHandler:
         blob.upload_from_string(contents, content_type)
         logger.debug(f"Uploaded bytes to {destination_folder.as_posix()}")
 
-        return blob.media_link
+        return str(blob.media_link)
 
     @staticmethod
     def _convert_media_link_to_file_in_gcp(media_link: str) -> Path:
         if not media_link:
             raise GCSLinkEmptyException("GCS link given is empty %s", media_link)
         try:
-            return Path(
-                Path("/".join(Path(unquote(urlparse(media_link).path)).parts))
-                .as_posix()
-                .split("/o/")[-1]
-            )
+            return Path(media_link)
         except TypeError as e:
             raise GCSLinkEmptyException(
                 "GCS link given is empty or malformed %s", media_link
