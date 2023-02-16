@@ -55,13 +55,13 @@ DOCKER_DEV := COMPOSE_DOCKER_CLI_BUILD=$(COMPOSE_DOCKER_CLI_BUILD) DOCKER_BUILDK
 USER_ID := "$(shell id -u):$(shell id -g)"
 
 build: docker_build ## Docker-compose build alias
-DOCKER_DEV_BUILD_PARALLEL := $(DOCKER_DEV) build --parallel \
+DOCKER_DEV_BUILD_PARALLEL := $(DOCKER_DEV) build \
 		--build-arg $(shell < docker/.env grep BASE_IMAGE_VERSION | xargs) \
 		--build-arg $(shell < docker/.env grep BASE_FE_IMAGE_VERSION | xargs) \
 		--build-arg $(shell < docker/.env.local grep GCP_REGISTRY_PROJECT | xargs)
 
-DOCKER_TAGS := docker tag slam_api slam_db_migrations && \
-               docker tag slam_worker slam_flower
+DOCKER_TAGS := docker tag slam-api slam_db_migrations && \
+               docker tag slam-worker slam_flower
 DOCKER_ENV_ARGS := $(shell < docker/.env xargs) $(shell < docker/.env.local xargs)
 GCP_REGISTRY_PROJECT := $(shell < docker/.env.local grep GCP_REGISTRY_PROJECT | cut -d "=" -f 2)
 BASE_FE_VERSION := $(shell < docker/.env grep BASE_FE_IMAGE_VERSION | cut -d "=" -f 2)
@@ -93,7 +93,7 @@ build_base_fe_image:  ## Build the base image for FE dependencies
 	${BASE_FE_IMAGE} .
 
 docker_build: ## Docker compose build with CI settings
-	$(DOCKER_DEV_BUILD_PARALLEL) fe_unittest worker api tests router
+	$(DOCKER_DEV_BUILD_PARALLEL) fe_unittest worker api tests dashboard pipeline dms admin editorv2 potential_view_v2 router
 	$(DOCKER_TAGS)
 
 docker_build_no_cache: ## Docker compose build with CI settings

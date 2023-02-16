@@ -64,6 +64,8 @@ services:
       test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}" ]
       interval: 5s
       retries: 5
+    volumes:
+      - postgres:/var/lib/postgresql/data
 
   postgres_stag:
     container_name: "postgres_stag"
@@ -143,6 +145,7 @@ services:
       - ../bin:/src/bin
       - ../utils:/src/utils
       - ./entrypoints/worker_entrypoint.sh:/entrypoint.sh
+      - ./blobs/api:/src/blobs
 ################################################################################
   flower:
     <<: *worker_common
@@ -201,6 +204,69 @@ services:
     <<: *env_files
 
 ################################################################################
+  dashboard:
+    build:
+      context: ../
+      dockerfile: docker/dashboard.Dockerfile
+      <<: *build_args
+    <<: *env_files
+    deploy:
+      resources:
+        limits:
+          memory: 4092M
+  pipeline:
+    build:
+      context: ../
+      dockerfile: docker/pipeline.Dockerfile
+      <<: *build_args
+    <<: *env_files
+    deploy:
+      resources:
+        limits:
+          memory: 4092M
+  admin:
+    build:
+      context: ../
+      dockerfile: docker/admin.Dockerfile
+      <<: *build_args
+    <<: *env_files
+    deploy:
+      resources:
+        limits:
+          memory: 4092M
+  dms:
+    build:
+      context: ../
+      dockerfile: docker/dms.Dockerfile
+      <<: *build_args
+    <<: *env_files
+    deploy:
+      resources:
+        limits:
+          memory: 4092M
+    volumes:
+      - ./blobs/api:/src/blobs
+  editorv2:
+    build:
+      context: ../
+      dockerfile: docker/editorv2.Dockerfile
+      <<: *build_args
+    <<: *env_files
+    deploy:
+      resources:
+        limits:
+          memory: 4092M
+  potential_view_v2:
+    build:
+      context: ../
+      dockerfile: docker/potential_view_v2.Dockerfile
+      <<: *build_args
+    <<: *env_files
+    deploy:
+      resources:
+        limits:
+          memory: 4092M
+
   router:
     build:
       context: ../
@@ -211,8 +277,18 @@ services:
     <<: *env_files
     environment:
       - API_HOST=http://api:8000
+    deploy:
+      resources:
+        limits:
+          memory: 4092M
     depends_on:
       - api
+      - dashboard
+      - pipeline
+      - admin
+      - dms
+      - editorv2
+      - potential_view_v2
     ports:
       - "80:80"
 
@@ -235,6 +311,7 @@ services:
       - ../bin:/src/bin
       - ../utils:/src/utils
       - ./entrypoints/api_entrypoint.sh:/entrypoint.sh
+      - ./blobs/api:/src/blobs
 
   dev_tools:
     build:
@@ -252,3 +329,6 @@ services:
       - "8888:8888"
     volumes:
       - ../:/src/
+
+volumes:
+  postgres:
