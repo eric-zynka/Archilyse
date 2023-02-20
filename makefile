@@ -60,8 +60,8 @@ DOCKER_DEV_BUILD_PARALLEL := $(DOCKER_DEV) build \
 		--build-arg $(shell < docker/.env grep BASE_FE_IMAGE_VERSION | xargs) \
 		--build-arg $(shell < docker/.env.local grep GCP_REGISTRY_PROJECT | xargs)
 
-DOCKER_TAGS := docker tag slam-api slam_db_migrations && \
-               docker tag slam-worker slam_flower
+DOCKER_TAGS := docker tag slam_api slam_db_migrations && \
+               docker tag slam_worker slam_flower
 DOCKER_ENV_ARGS := $(shell < docker/.env xargs) $(shell < docker/.env.local xargs)
 GCP_REGISTRY_PROJECT := $(shell < docker/.env.local grep GCP_REGISTRY_PROJECT | cut -d "=" -f 2)
 BASE_FE_VERSION := $(shell < docker/.env grep BASE_FE_IMAGE_VERSION | cut -d "=" -f 2)

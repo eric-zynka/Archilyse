@@ -13,12 +13,12 @@ ENV PATH=/src:$PATH
 RUN chown -R nobody /etc/nginx /src
 RUN mkdir -m 755 /var/log/nginx
 
-COPY --from=slam-dashboard /dep/dashboard/dist               /src/ui/dashboard/dist
-COPY --from=slam-pipeline  /dep/pipeline/dist                /src/ui/dist
-COPY --from=slam-dms       /dep/dms/dist                     /src/ui/dms/dist
-COPY --from=slam-admin     /dep/admin/dist                   /src/ui/admin/dist
-COPY --from=slam-editorv2  /dep/react-planner/dist      /src/ui/react-planner/dist
-COPY --from=slam-potential_view_v2  /dep/potential-view/dist      /src/ui/potential-view/dist
+COPY --from=slam_dashboard /dep/dashboard/dist               /src/ui/dashboard/dist
+COPY --from=slam_pipeline  /dep/pipeline/dist                /src/ui/dist
+COPY --from=slam_dms       /dep/dms/dist                     /src/ui/dms/dist
+COPY --from=slam_admin     /dep/admin/dist                   /src/ui/admin/dist
+COPY --from=slam_editorv2  /dep/react-planner/dist      /src/ui/react-planner/dist
+COPY --from=slam_potential_view_v2  /dep/potential-view/dist      /src/ui/potential-view/dist
 
 WORKDIR /src/
 
